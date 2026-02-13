@@ -20,10 +20,29 @@ info-machines:
     echo "GCP Instances Information:"
     cat inventory/gcp_dynamic.ini
 
-# Run k8s masters-workers infrastructure (legacy)
-iac: 
-    echo "Create all the masters ....  " 
-    ansible-playbook playbooks/create-masters-instance.yaml
-    echo "Create all the workers ..... "   
-    ansible-playbook playbooks/create-workers-instance.yaml
+# Install services on all created machines
+install-services:
+    echo "Installing services on all machines (Docker, Jenkins, SonarQube, Nexus, Portainer) ..."
+    ansible-playbook playbooks/install-services.yml -i inventory/gcp_dynamic.ini
+
+# Install only Docker on all machines
+install-docker:
+    echo "Installing Docker on all machines ..."
+    ansible-playbook playbooks/install-services.yml -i inventory/gcp_dynamic.ini -t docker
+
+# Install only Jenkins
+install-jenkins:
+    echo "Installing Jenkins on Jenkins machine ..."
+    ansible-playbook playbooks/install-services.yml -i inventory/gcp_dynamic.ini -l jenkins
+
+# Install only SonarQube
+install-sonarqube:
+    echo "Installing SonarQube on SonarQube machine ..."
+    ansible-playbook playbooks/install-services.yml -i inventory/gcp_dynamic.ini -l sonarqube
+
+# Install only Nexus
+install-nexus:
+    echo "Installing Nexus on Nexus machine ..."
+    ansible-playbook playbooks/install-services.yml -i inventory/gcp_dynamic.ini -l nexus
+
 

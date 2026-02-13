@@ -1,0 +1,24 @@
+---
+- name: Install services on Jenkins machine
+  hosts: jenkins
+  gather_facts: true
+  become: true
+  roles:
+    - role: docker
+    - role: jenkins
+
+- name: Install services on SonarQube machine
+  hosts: sonarqube
+  gather_facts: true
+  become: true
+  roles:
+    - role: docker
+    - role: sonarqube
+
+- name: Install services on Nexus machine
+  hosts: nexus
+  gather_facts: true
+  become: true
+  roles:
+    - role: docker
+    - role: nexus

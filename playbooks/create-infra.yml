@@ -26,4 +26,18 @@
         gcp_instances: "{{ instance_files.results | map(attribute='content') | map('b64decode') | map('from_json') | list }}"
       when: not destroy_infrastructure | default(false)
 
+    - name: Wait for instances to be SSH ready
+      wait_for:
+        host: "{{ item | regex_replace('^([^ ]*) ansible_host=([^ ]*) .*$', '\\2') }}"
+        port: 22
+        delay: 5
+        timeout: 300
+      loop: "{{ lookup('file', '../inventory/gcp_dynamic.ini').split('\\n') | select('search', 'ansible_host') | list }}"
+      when: not destroy_infrastructure | default(false)
+
+- name: Install services on created instances
+  import_playbook: ../playbooks/install-services.yml
+  when: not destroy_infrastructure | default(false)
+
+
 

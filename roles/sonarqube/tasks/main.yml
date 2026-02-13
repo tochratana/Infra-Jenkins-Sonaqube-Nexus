@@ -1,0 +1,67 @@
+---
+- name: Install SonarQube using Docker
+  docker_container:
+    name: sonarqube
+    image: sonarqube:latest
+    state: started
+    restart_policy: always
+    ports:
+      - "9000:9000"
+    env:
+      SONAR_JDBC_URL: "jdbc:postgresql://sonarqube_db:5432/sonarqube"
+      SONAR_JDBC_USERNAME: "sonar"
+      SONAR_JDBC_PASSWORD: "sonar"
+    volumes:
+      - sonarqube_data:/opt/sonarqube/data
+      - sonarqube_logs:/opt/sonarqube/logs
+      - sonarqube_extensions:/opt/sonarqube/extensions
+
+- name: Install PostgreSQL for SonarQube (if needed separately)
+  docker_container:
+    name: sonarqube_db
+    image: postgres:13-alpine
+    state: started
+    restart_policy: always
+    env:
+      POSTGRES_USER: "sonar"
+      POSTGRES_PASSWORD: "sonar"
+      POSTGRES_DB: "sonarqube"
+    volumes:
+      - sonarqube_db:/var/lib/postgresql/data
+
+- name: Wait for SonarQube to be ready
+  wait_for:
+    host: localhost
+    port: 9000
+    delay: 10
+    timeout: 300
+
+- name: Install Portainer
+  docker_container:
+    name: portainer
+    image: portainer/portainer-ce:latest
+    state: started
+    restart_policy: always
+    ports:
+      - "8000:8000"
+      - "9000:9000"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - portainer_data:/data
+
+- name: Update apt cache
+  apt:
+    update_cache: yes
+    cache_valid_time: 3600
+
+- name: Install okMyZsh (zsh with oh-my-zsh)
+  apt:
+    name: zsh
+    state: present
+
+- name: Install oh-my-zsh
+  shell: |
+    sh -c "$(curl -fsSL https://raw.github.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
+  args:
+    creates: ~/.oh-my-zsh
+  become_user: "{{ ansible_user }}"

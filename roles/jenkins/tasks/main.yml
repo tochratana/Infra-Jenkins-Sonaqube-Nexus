@@ -1,0 +1,76 @@
+---
+- name: Install Java (required for Jenkins)
+  apt:
+    name:
+      - openjdk-17-jre-headless
+    state: present
+    update_cache: yes
+
+- name: Install Jenkins using Docker
+  docker_container:
+    name: jenkins
+    image: jenkins/jenkins:lts
+    state: started
+    restart_policy: always
+    ports:
+      - "8080:8080"
+      - "50000:50000"
+    volumes:
+      - /var/jenkins_home:/var/jenkins_home
+      - /var/run/docker.sock:/var/run/docker.sock
+    env:
+      JENKINS_OPTS: "--httpListenAddress=0.0.0.0"
+
+- name: Wait for Jenkins to be ready
+  wait_for:
+    host: localhost
+    port: 8080
+    delay: 10
+    timeout: 300
+
+
+- name: Install Ansible
+  apt:
+    name: ansible
+    state: present
+    update_cache: yes
+
+- name: Install Nginx
+  apt:
+    name: 
+      - nginx
+      - certbot
+      - python3-certbot-nginx
+    state: present
+
+- name: Start Nginx service
+  systemd:
+    name: nginx
+    state: started
+    enabled: yes
+
+- name: Create Nginx proxy config for Jenkins
+  template:
+    src: nginx-jenkins.j2
+    dest: /etc/nginx/sites-available/jenkins
+  notify: restart nginx
+
+- name: Enable Nginx site
+  file:
+    src: /etc/nginx/sites-available/jenkins
+    dest: /etc/nginx/sites-enabled/jenkins
+    state: link
+  notify: restart nginx
+
+- name: Install Portainer
+  docker_container:
+    name: portainer
+    image: portainer/portainer-ce:latest
+    state: started
+    restart_policy: always
+    ports:
+      - "8000:8000"
+      - "9000:9000"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - portainer_data:/data

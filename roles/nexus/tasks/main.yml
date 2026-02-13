@@ -1,0 +1,98 @@
+---
+- name: Update apt cache
+  apt:
+    update_cache: yes
+    cache_valid_time: 3600
+
+- name: Install okMyZsh (zsh with oh-my-zsh)
+  apt:
+    name: zsh
+    state: present
+
+- name: Install oh-my-zsh
+  shell: |
+    sh -c "$(curl -fsSL https://raw.github.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
+  args:
+    creates: ~/.oh-my-zsh
+  become_user: "{{ ansible_user }}"
+
+- name: Install Portainer
+  docker_container:
+    name: portainer
+    image: portainer/portainer-ce:latest
+    state: started
+    restart_policy: always
+    ports:
+      - "8000:8000"
+      - "9000:9000"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - portainer_data:/data
+
+- name: Install Nexus using Docker
+  docker_container:
+    name: nexus3
+    image: sonatype/nexus3:latest
+    state: started
+    restart_policy: always
+    ports:
+      - "8081:8081"
+      - "8085:8085"
+    volumes:
+      - /opt/sonatype/sonatype-work:/sonatype-work
+
+- name: Wait for Nexus to be ready
+  wait_for:
+    host: localhost
+    port: 8081
+    delay: 10
+    timeout: 600
+
+- name: Create Docker blob store directory
+  file:
+    path: /opt/sonatype/sonatype-work/nexus3/blobs/docker-blob
+    state: directory
+    owner: "200"
+    group: "200"
+    mode: '0755'
+
+- name: Create Helm blob store directory
+  file:
+    path: /opt/sonatype/sonatype-work/nexus3/blobs/helm-blob
+    state: directory
+    owner: "200"
+    group: "200"
+    mode: '0755'
+
+- name: Create Docker repository in Nexus
+  uri:
+    url: "http://localhost:8081/service/rest/v1/repositories/docker/hosted"
+    method: POST
+    user: admin
+    password: admin123
+    force_basic_auth: yes
+    body_format: json
+    body:
+      name: docker-local
+      online: true
+      storage:
+        blobStoreName: docker-blob
+        strictContentTypeValidation: true
+      docker:
+        v1Enabled: false
+  # ignore_errors: yes
+
+- name: Create Helm repository in Nexus
+  uri:
+    url: "http://localhost:8081/service/rest/v1/repositories/helm/hosted"
+    method: POST
+    user: admin
+    password: admin123
+    force_basic_auth: yes
+    body_format: json
+    body:
+      name: helm-local
+      online: true
+      storage:
+        blobStoreName: helm-blob
+  # ignore_errors: yes
