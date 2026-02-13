@@ -1,0 +1,12 @@
+---
+- name: Create google cloud instance
+  hosts: localhost
+  become: true
+  vars:
+    machine_name: jenkins
+    google_project_id: devmentor-445804
+    service_account_path: ../google-service-account.json
+    ssh_public_key_part: /home/vagrant/.ssh/id_rsa.pub
+    tasks:
+    - name: create first gcp instance 
+      import_tasks: tasks/create-gcp-tasks.yaml
