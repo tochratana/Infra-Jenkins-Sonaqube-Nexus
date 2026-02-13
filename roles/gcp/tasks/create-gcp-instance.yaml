@@ -1,0 +1,55 @@
+---
+- name: Slurp the local public key
+  slurp: 
+    src: "{{ ssh_pubkey_path }}"
+  register: ssh_pub_key
+
+- name: Install pip
+  apt: 
+    name: python3-pip
+    state: present
+
+- name: Ensure the required packages are installed
+  pip:
+    name:
+      - requests
+      - google-auth
+
+- name: Create GCP instance - {{ machine.name }}
+  google.cloud.gcp_compute_instance:
+    name: "{{ machine.name }}"
+    machine_type: "{{ machine.machine_type }}"
+    zone: "{{ machine.zone }}"
+    project: "{{ google_project_id }}"
+    auth_kind: "serviceaccount"
+    service_account_file: "{{ service_account_path }}"
+    state: present
+    metadata:
+      ssh-keys: "{{ agent_user }}:{{ ssh_pub_key['content'] | b64decode }}"
+      startup-script: |
+        #!/bin/bash
+        sudo apt update 
+        sudo apt install fish -y
+    disks:
+      - auto_delete: true
+        boot: true
+        initialize_params:
+          source_image: "{{ machine.image }}"
+          disk_size_gb: "{{ machine.disk_size }}"
+          disk_type: "{{ machine.disk_type }}"
+    network_interfaces:
+      - network:
+          selfLink: "projects/{{ google_project_id }}/global/networks/default"
+        access_configs:
+          - name: External NAT
+            type: ONE_TO_ONE_NAT
+    tags:
+      items:
+        - http-server
+        - https-server
+  register: gcp_instance
+
+- name: Write instance info to JSON file
+  copy:
+    content: "{{ gcp_instance | to_nice_json }}"
+    dest: "./gcp_instance_{{ machine.name }}.json"

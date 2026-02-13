@@ -1,0 +1,12 @@
+---
+- name: Create google cloud instances
+  hosts: localhost
+  become: true
+  vars_files:
+    - ../../vars/machines.yaml
+  tasks:
+    - name: Create GCP instances
+      include_tasks: tasks/create-gcp-instance.yaml
+      loop: "{{ machines_info }}"
+      loop_control:
+        loop_var: machine

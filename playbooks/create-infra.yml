@@ -1,4 +1,19 @@
-- hosts: localhost
+---
+- name: Create GCP infrastructure
+  hosts: localhost
   gather_facts: false
-  roles:
-    - gcp
+  vars_files:
+    - ../vars/machines.yaml
+  tasks:
+    - name: Include GCP create tasks
+      include_tasks: ../roles/gcp/main-create-gcp.yaml
+
+- name: Destroy GCP infrastructure
+  hosts: localhost
+  gather_facts: false
+  vars_files:
+    - ../vars/machines.yaml
+  tasks:
+    - name: Include GCP destroy tasks
+      include_tasks: ../roles/gcp/main-destroy-gcp.yaml
+  when: destroy_infrastructure | default(false)
