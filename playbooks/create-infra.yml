@@ -5,15 +5,25 @@
   vars_files:
     - ../vars/machines.yaml
   tasks:
-    - name: Include GCP create tasks
-      include_tasks: ../roles/gcp/main-create-gcp.yaml
+    - name: Create GCP instances
+      include_tasks: ../roles/gcp/tasks/create-gcp-instance.yaml
+      loop: "{{ machines_info }}"
+      loop_control:
+        loop_var: machine
 
-- name: Destroy GCP infrastructure
-  hosts: localhost
-  gather_facts: false
-  vars_files:
-    - ../vars/machines.yaml
-  tasks:
-    - name: Include GCP destroy tasks
-      include_tasks: ../roles/gcp/main-destroy-gcp.yaml
-  when: destroy_infrastructure | default(false)
+    - name: Read created instance JSON files
+      slurp:
+        src: "./gcp_instance_{{ item.name }}.json"
+      register: instance_files
+      loop: "{{ machines_info }}"
+      when: not destroy_infrastructure | default(false)
+
+    - name: Generate dynamic inventory from created instances
+      template:
+        src: ../templates/gcp-inventory-template.j2
+        dest: ../inventory/gcp_dynamic.ini
+      vars:
+        gcp_instances: "{{ instance_files.results | map(attribute='content') | map('b64decode') | map('from_json') | list }}"
+      when: not destroy_infrastructure | default(false)
+
+

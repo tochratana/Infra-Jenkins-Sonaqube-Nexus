@@ -1,2 +1,16 @@
-[gcp_instance]
-{{ gcp_instance.name }} ansible_host={{ gcp_instance.networkInterfaces[0].accessConfigs[0].natIP }} ansible_user=tochratana
+[gcp_instances]
+{% for instance in gcp_instances %}
+{{ instance.name }} ansible_host={{ instance.networkInterfaces[0].accessConfigs[0].natIP }} ansible_user=tochratana
+{% endfor %}
+
+[jenkins]
+jenkins ansible_host={{ gcp_instances | selectattr('name', 'equalto', 'jenkins') | map(attribute='networkInterfaces') | map(attribute='0') | map(attribute='accessConfigs') | map(attribute='0') | map(attribute='natIP') | first }} ansible_user=tochratana
+
+[sonarqube]
+sonarqube ansible_host={{ gcp_instances | selectattr('name', 'equalto', 'sonarqube') | map(attribute='networkInterfaces') | map(attribute='0') | map(attribute='accessConfigs') | map(attribute='0') | map(attribute='natIP') | first }} ansible_user=tochratana
+
+[nexus]
+nexus ansible_host={{ gcp_instances | selectattr('name', 'equalto', 'nexus') | map(attribute='networkInterfaces') | map(attribute='0') | map(attribute='accessConfigs') | map(attribute='0') | map(attribute='natIP') | first }} ansible_user=tochratana
+
+[all:vars]
+ansible_python_interpreter=/usr/bin/python3
