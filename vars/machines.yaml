@@ -3,6 +3,10 @@ google_project_id: "devmentor-445804"
 ssh_pubkey_path: "/home/vagrant/.ssh/id_rsa.pub"
 agent_user: "tochratana"
 
+# Cloudflare
+cloudflare_api_token: "UYoPnVNQZVcO4ldmorbLcDagrKQUl7wAI1eFqlcJ"
+cloudflare_zone: "tochratana.com"
+
 # Define machine spec
 machine_specs:
   large:

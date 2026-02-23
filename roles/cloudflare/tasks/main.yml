@@ -1,0 +1,26 @@
+- name: Create Jenkins DNS record
+  community.general.cloudflare_dns:
+    zone: "{{ cloudflare_zone }}"
+    record: "jenkins"
+    type: A
+    value: "{{ hostvars['jenkins'].ansible_host }}"
+    proxied: true
+    api_token: "{{ cloudflare_api_token }}"
+
+- name: Create SonarQube DNS record
+  community.general.cloudflare_dns:
+    zone: "{{ cloudflare_zone }}"
+    record: "sonar"
+    type: A
+    value: "{{ hostvars['sonarqube'].ansible_host }}"
+    proxied: true
+    api_token: "{{ cloudflare_api_token }}"
+
+- name: Create Nexus DNS record
+  community.general.cloudflare_dns:
+    zone: "{{ cloudflare_zone }}"
+    record: "nexus"
+    type: A
+    value: "{{ hostvars['nexus'].ansible_host }}"
+    proxied: true
+    api_token: "{{ cloudflare_api_token }}"

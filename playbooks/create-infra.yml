@@ -40,6 +40,36 @@
         loop_var: instance
       when: not destroy_infrastructure | default(false)
 
+    - name: Create Jenkins DNS record in Cloudflare
+      community.general.cloudflare_dns:
+        zone: "{{ cloudflare_zone }}"
+        record: "jenkins"
+        type: A
+        value: "{{ ((instance_files.results | selectattr('item.name', 'equalto', 'jenkins') | first).content | b64decode | from_json)['networkInterfaces'][0]['accessConfigs'][0]['natIP'] }}"
+        proxied: true
+        api_token: "{{ cloudflare_api_token }}"
+      when: not destroy_infrastructure | default(false)
+
+    - name: Create SonarQube DNS record in Cloudflare
+      community.general.cloudflare_dns:
+        zone: "{{ cloudflare_zone }}"
+        record: "sonar"
+        type: A
+        value: "{{ ((instance_files.results | selectattr('item.name', 'equalto', 'sonarqube') | first).content | b64decode | from_json)['networkInterfaces'][0]['accessConfigs'][0]['natIP'] }}"
+        proxied: true
+        api_token: "{{ cloudflare_api_token }}"
+      when: not destroy_infrastructure | default(false)
+
+    - name: Create Nexus DNS record in Cloudflare
+      community.general.cloudflare_dns:
+        zone: "{{ cloudflare_zone }}"
+        record: "nexus"
+        type: A
+        value: "{{ ((instance_files.results | selectattr('item.name', 'equalto', 'nexus') | first).content | b64decode | from_json)['networkInterfaces'][0]['accessConfigs'][0]['natIP'] }}"
+        proxied: true
+        api_token: "{{ cloudflare_api_token }}"
+      when: not destroy_infrastructure | default(false)
+
 - name: Install services on created instances
   import_playbook: ../playbooks/install-services.yml
   when: not destroy_infrastructure | default(false)

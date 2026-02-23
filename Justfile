@@ -46,3 +46,7 @@ install-nexus:
     ansible-playbook playbooks/install-services.yml -i inventory/gcp_dynamic.ini -l nexus
 
 
+test-jenkins: 
+  echo " Start put domain name "
+  ansible-playbook playbooks/test-jenkins-domain.yml
+
