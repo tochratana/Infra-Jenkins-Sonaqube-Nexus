@@ -1,25 +1,21 @@
-upstream jenkins {
-    server localhost:8080;
+upstream sonarqube {
+    server localhost:9000;
 }
 
 server {
     listen 80;
     listen [::]:80;
-    server_name {{ jenkins_domain }};
+    server_name {{ sonar_domain }};
 
-    # Allow large artifact uploads
+    # Allow large payload for scan uploads
     client_max_body_size 100m;
 
     location / {
-        proxy_pass http://jenkins;
+        proxy_pass http://sonarqube;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
-        # Required for Jenkins websocket agents
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection "upgrade";
         proxy_redirect off;
     }
 }

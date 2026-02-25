@@ -61,6 +61,8 @@
   template:
     src: nginx-jenkins.j2
     dest: /etc/nginx/sites-available/jenkins
+  vars:
+    jenkins_domain: "jenkins.tochratana.com"
   notify: restart nginx
 
 - name: Enable Nginx site
@@ -68,6 +70,12 @@
     src: /etc/nginx/sites-available/jenkins
     dest: /etc/nginx/sites-enabled/jenkins
     state: link
+  notify: restart nginx
+
+- name: Remove default Nginx site
+  file:
+    path: /etc/nginx/sites-enabled/default
+    state: absent
   notify: restart nginx
 
 - name: Install Portainer

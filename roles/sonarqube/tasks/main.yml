@@ -65,3 +65,37 @@
   args:
     creates: ~/.oh-my-zsh
   become_user: "{{ ansible_user }}"
+
+- name: Install Nginx
+  apt:
+    name:
+      - nginx
+    state: present
+    update_cache: yes
+
+- name: Start and enable Nginx
+  systemd:
+    name: nginx
+    state: started
+    enabled: yes
+
+- name: Deploy Nginx reverse proxy config for SonarQube
+  template:
+    src: nginx-sonarqube.j2
+    dest: /etc/nginx/sites-available/sonarqube
+  vars:
+    sonar_domain: "sonar.tochratana.com"
+  notify: restart nginx
+
+- name: Enable SonarQube Nginx site
+  file:
+    src: /etc/nginx/sites-available/sonarqube
+    dest: /etc/nginx/sites-enabled/sonarqube
+    state: link
+  notify: restart nginx
+
+- name: Remove default Nginx site
+  file:
+    path: /etc/nginx/sites-enabled/default
+    state: absent
+  notify: restart nginx

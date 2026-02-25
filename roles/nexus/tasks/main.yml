@@ -96,3 +96,37 @@
       storage:
         blobStoreName: helm-blob
   # ignore_errors: yes
+
+- name: Install Nginx
+  apt:
+    name:
+      - nginx
+    state: present
+    update_cache: yes
+
+- name: Start and enable Nginx
+  systemd:
+    name: nginx
+    state: started
+    enabled: yes
+
+- name: Deploy Nginx reverse proxy config for Nexus
+  template:
+    src: nginx-nexus.j2
+    dest: /etc/nginx/sites-available/nexus
+  vars:
+    nexus_domain: "nexus.tochratana.com"
+  notify: restart nginx
+
+- name: Enable Nexus Nginx site
+  file:
+    src: /etc/nginx/sites-available/nexus
+    dest: /etc/nginx/sites-enabled/nexus
+    state: link
+  notify: restart nginx
+
+- name: Remove default Nginx site
+  file:
+    path: /etc/nginx/sites-enabled/default
+    state: absent
+  notify: restart nginx
