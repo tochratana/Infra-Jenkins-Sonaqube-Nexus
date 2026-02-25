@@ -1,7 +1,7 @@
 {
     "changed": true,
     "cpuPlatform": "Intel Broadwell",
-    "creationTimestamp": "2026-02-23T01:08:25.953-08:00",
+    "creationTimestamp": "2026-02-23T07:09:34.521-08:00",
     "deletionProtection": false,
     "disks": [
         {
@@ -59,11 +59,11 @@
         }
     ],
     "failed": false,
-    "fingerprint": "fCmK3Pr4itw=",
-    "id": "5566214714598467558",
+    "fingerprint": "RKylqEFX7Wo=",
+    "id": "4061531467144090433",
     "kind": "compute#instance",
     "labelFingerprint": "42WmSpB8rSM=",
-    "lastStartTimestamp": "2026-02-23T01:08:36.278-08:00",
+    "lastStartTimestamp": "2026-02-23T07:09:43.293-08:00",
     "machineType": "https://www.googleapis.com/compute/v1/projects/devmentor-445804/zones/europe-central2-b/machineTypes/e2-medium",
     "metadata": {},
     "name": "sonarqube",
@@ -78,11 +78,11 @@
                     "type": "ONE_TO_ONE_NAT"
                 }
             ],
-            "fingerprint": "4qHSaK6V6Gc=",
+            "fingerprint": "TrBVcH2bbQw=",
             "kind": "compute#networkInterface",
             "name": "nic0",
             "network": "https://www.googleapis.com/compute/v1/projects/devmentor-445804/global/networks/default",
-            "networkIP": "10.186.0.15",
+            "networkIP": "10.186.0.18",
             "stackType": "IPV4_ONLY",
             "subnetwork": "https://www.googleapis.com/compute/v1/projects/devmentor-445804/regions/europe-central2/subnetworks/default"
         }
