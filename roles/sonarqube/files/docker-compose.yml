@@ -14,8 +14,8 @@ services:
     volumes:
       - sonarqube_data:/opt/sonarqube/data
       - sonarqube_extensions:/opt/sonarqube/extensions
-    expose:
-      - "9000"
+    ports:
+      - "9000:9000"   # 🔥 THIS IS THE FIX
 
   db:
     image: postgres:15

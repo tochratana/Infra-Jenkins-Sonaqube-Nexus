@@ -39,18 +39,7 @@
       loop_control:
         loop_var: instance
       when: not destroy_infrastructure | default(false)
-
-    # - name: Add created instances into in-memory inventory
-    #   add_host:
-    #     name: "{{ item.name }}"
-    #     groups: "{{ item.name }}"
-    #     ansible_host: "{{ item.networkInterfaces[0].accessConfigs[0].natIP }}"
-    #     ansible_user: "{{ agent_user }}"
-    #   loop: "{{ gcp_instances }}"
-    #   loop_control:
-    #     label: "{{ item.name }}"
-    #   when: not destroy_infrastructure | default(false)
-
+      
     - name: Create Jenkins DNS record in Cloudflare
       community.general.cloudflare_dns:
         zone: "{{ cloudflare_zone }}"
@@ -64,7 +53,7 @@
     - name: Create SonarQube DNS record in Cloudflare
       community.general.cloudflare_dns:
         zone: "{{ cloudflare_zone }}"
-        record: "sonar"
+        record: "sonarqube"
         type: A
         value: "{{ ((instance_files.results | selectattr('item.name', 'equalto', 'sonarqube') | first).content | b64decode | from_json)['networkInterfaces'][0]['accessConfigs'][0]['natIP'] }}"
         proxied: "{{ cloudflare_proxied }}"
