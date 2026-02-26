@@ -1,0 +1,6 @@
+---
+# Nexus-specific configuration moved from group_vars
+nexus_domain: "nexus.tochratana.com"
+nexus_port: 8081
+certbot_email: "admin@tochratana.com"
+nexus_default_admin_password: "admin123"  # Override after first login with your own password

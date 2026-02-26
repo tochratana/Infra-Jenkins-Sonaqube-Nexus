@@ -1,9 +1,62 @@
 ---
+- name: Install OhMyZsh dependencies
+  apt:
+    name:
+      - zsh
+      - git
+      - curl
+    state: present
+
+- name: Install OhMyZsh for root
+  shell: |
+    sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
+  args:
+    creates: /root/.oh-my-zsh
+  become: yes
+
+- name: Install OhMyZsh for ansible user
+  shell: |
+    sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
+  args:
+    creates: "/home/{{ ansible_user }}/.oh-my-zsh"
+  become: yes
+  become_user: "{{ ansible_user }}"
+
+- name: Change default shell to zsh for ansible user
+  user:
+    name: "{{ ansible_user }}"
+    shell: /bin/zsh
+
 - name: Ensure Docker is installed and responding
   command: docker version
   register: docker_check
   changed_when: false
   failed_when: docker_check.rc != 0
+
+- name: Install GitLab CLI (glab)
+  block:
+    - name: Download glab
+      get_url:
+        url: "https://gitlab.com/gitlab-org/cli/-/releases/v1.36.0/downloads/glab_1.36.0_Linux_x86_64.deb"
+        dest: /tmp/glab.deb
+
+    - name: Install glab
+      apt:
+        deb: /tmp/glab.deb
+        state: present
+
+- name: Install okMyZsh (zsh with oh-my-zsh)
+  apt:
+    name: zsh
+    state: present
+
+- name: Install oh-my-zsh
+  shell: |
+    sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
+  args:
+    creates: ~/.oh-my-zsh
+  become_user: "{{ ansible_user }}"
+
 
 - name: Install Java (required for Jenkins)
   apt:
@@ -66,8 +119,6 @@
   template:
     src: nginx-jenkins.j2
     dest: /etc/nginx/sites-available/jenkins
-  vars:
-    jenkins_domain: "jenkins.tochratana.com"
   notify: restart nginx
 
 - name: Enable Nginx site
@@ -92,15 +143,15 @@
   ignore_errors: true
   when: jenkins_domain is defined
 
-# - name: Install Portainer
-#   docker_container:
-#     name: portainer
-#     image: portainer/portainer-ce:latest
-#     state: started
-#     restart_policy: always
-#     ports:
-#       - "8000:8000"
-#       - "9000:9000"
-#     volumes:
-#       - /var/run/docker.sock:/var/run/docker.sock
-#       - portainer_data:/data
+- name: Install Portainer
+  docker_container:
+    name: portainer
+    image: portainer/portainer-ce:latest
+    state: started
+    restart_policy: always
+    ports:
+      - "8000:8000"
+      - "9000:9000"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - portainer_data:/data

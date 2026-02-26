@@ -1,6 +1,5 @@
 ---
-# SonarQube default variables
+# role defaults retained for legacy/backwards compatibility;
+# service-specific values have been moved into vars/main.yml.
 
-sonar_domain: "sonarqube.tochratana.com"
-certbot_email: "admin@tochratana.com"
-sonar_install_method: "compose"
+# empty for now, see roles/sonarqube/vars/main.yml

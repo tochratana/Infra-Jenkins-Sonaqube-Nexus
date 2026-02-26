@@ -1,7 +1,6 @@
 ---
-# Jenkins default variables
+# role defaults retained for legacy/backwards compatibility;
+# most service-specific settings now live in vars/main.yml instead.
+# (vars/* has higher precedence than defaults/*.)
 
-jenkins_domain: "jenkins.tochratana.com"
-jenkins_port: 8080
-jenkins_image: "jenkins/jenkins:lts"
-certbot_email: "admin@tochratana.com"
+# empty for now, see roles/jenkins/vars/main.yml

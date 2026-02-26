@@ -1,3 +1,0 @@
-# variables for sonarqube hosts
-sonar_domain: "sonarqube.tochratana.com"
-sonar_port: "9000"

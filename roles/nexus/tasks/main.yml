@@ -1,4 +1,36 @@
 ---
+# ─────────────────────────────────────────────
+# 1. Filesystem & Container Setup
+# ─────────────────────────────────────────────
+
+- name: Install OhMyZsh dependencies
+  apt:
+    name:
+      - zsh
+      - git
+      - curl
+    state: present
+
+- name: Install OhMyZsh for root
+  shell: |
+    sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
+  args:
+    creates: /root/.oh-my-zsh
+  become: yes
+
+- name: Install OhMyZsh for ansible user
+  shell: |
+    sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
+  args:
+    creates: "/home/{{ ansible_user }}/.oh-my-zsh"
+  become: yes
+  become_user: "{{ ansible_user }}"
+
+- name: Change default shell to zsh for ansible user
+  user:
+    name: "{{ ansible_user }}"
+    shell: /bin/zsh
+
 - name: Update apt cache
   apt:
     update_cache: yes
@@ -22,91 +54,236 @@
   changed_when: false
   failed_when: docker_check.rc != 0
 
-- name: Install Portainer
-  docker_container:
-    name: portainer
-    image: portainer/portainer-ce:latest
-    state: started
-    restart_policy: always
-    ports:
-      - "8000:8000"
-      - "9000:9000"
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-      - portainer_data:/data
+- name: Create Nexus volume for persistent data
+  docker_volume:
+    name: nexus_data
+    state: present
 
-- name: Install Nexus using Docker
+- name: Ensure any old nexus container is removed (avoids port conflicts)
   docker_container:
-    name: nexus3
+    name: nexus
+    state: absent
+    force_kill: yes
+
+- name: Create Nexus container with proper configuration
+  docker_container:
+    name: nexus
     image: sonatype/nexus3:latest
     state: started
     restart_policy: always
     ports:
       - "8081:8081"
-      - "8085:8085"
+      - "8082:8082"  # Docker hosted repository
+      - "8083:8083"  # Docker proxy repository
     volumes:
-      - /opt/sonatype/sonatype-work:/sonatype-work
+      - nexus_data:/nexus-data
+    env:
+      INSTALL4J_ADD_VM_PARAMS: "-Xms2g -Xmx2g -XX:MaxDirectMemorySize=3g"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081/service/rest/v1/status"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
-- name: Wait for Nexus to be ready
-  wait_for:
-    host: localhost
-    port: 8081
-    delay: 10
-    timeout: 600
+# ─────────────────────────────────────────────
+# 2. Wait for Nexus to be fully ready
+# ─────────────────────────────────────────────
 
-- name: Create Docker blob store directory
-  file:
-    path: /opt/sonatype/sonatype-work/nexus3/blobs/docker-blob
-    state: directory
-    owner: "200"
-    group: "200"
-    mode: '0755'
+- name: Wait for Nexus API to be reachable
+  uri:
+    url: "http://localhost:8081/service/rest/v1/status"
+    method: GET
+    status_code: 200
+  register: nexus_status
+  until: nexus_status.status == 200
+  retries: 40
+  delay: 15
+  ignore_errors: true
 
-- name: Create Helm blob store directory
-  file:
-    path: /opt/sonatype/sonatype-work/nexus3/blobs/helm-blob
-    state: directory
-    owner: "200"
-    group: "200"
-    mode: '0755'
+- name: Wait for Nexus API with fallback retry
+  uri:
+    url: "http://localhost:8081/service/rest/v1/status"
+    method: GET
+    status_code: 200, 401
+  register: nexus_status_final
+  until: nexus_status_final.status in [200, 401]
+  retries: 20
+  delay: 10
 
-- name: Create Docker repository in Nexus
+# ─────────────────────────────────────────────
+# 3. Resolve admin password
+# ─────────────────────────────────────────────
+
+- name: Check if initial admin password file exists in container
+  command: docker exec nexus test -f /nexus-data/admin.password
+  register: admin_password_file_check
+  changed_when: false
+  failed_when: false
+
+- name: Read initial admin password from container
+  command: docker exec nexus cat /nexus-data/admin.password
+  register: nexus_initial_password
+  changed_when: false
+  when: admin_password_file_check.rc == 0
+
+- name: Set active admin password fact
+  set_fact:
+    nexus_admin_password: >-
+      {{ nexus_initial_password.stdout | trim
+         if admin_password_file_check.rc == 0
+         else 'admin123' }}
+
+- name: Display admin password note
+  debug:
+    msg: "Nexus admin password: {{ nexus_admin_password }}"
+
+# ─────────────────────────────────────────────
+# 4. Blob Stores
+# ─────────────────────────────────────────────
+
+- name: Get existing blob stores
+  uri:
+    url: "http://localhost:8081/service/rest/v1/blobstores"
+    method: GET
+    user: admin
+    password: "{{ nexus_admin_password }}"
+    force_basic_auth: yes
+    return_content: yes
+  register: existing_blobstores
+  changed_when: false
+
+- name: Set existing blob store names fact
+  set_fact:
+    existing_blobstore_names: "{{ existing_blobstores.json | map(attribute='name') | list }}"
+
+- name: Create Docker blob store
+  uri:
+    url: "http://localhost:8081/service/rest/v1/blobstores/file"
+    method: POST
+    user: admin
+    password: "{{ nexus_admin_password }}"
+    force_basic_auth: yes
+    body_format: json
+    body:
+      name: "docker-blob"
+      path: "/nexus-data/blobs/docker-blob"
+    status_code: 204
+  when: '"docker-blob" not in existing_blobstore_names'
+  register: docker_blob_result
+
+- name: Create Helm blob store
+  uri:
+    url: "http://localhost:8081/service/rest/v1/blobstores/file"
+    method: POST
+    user: admin
+    password: "{{ nexus_admin_password }}"
+    force_basic_auth: yes
+    body_format: json
+    body:
+      name: "helm-blob"
+      path: "/nexus-data/blobs/helm-blob"
+    status_code: 204
+  when: '"helm-blob" not in existing_blobstore_names'
+  register: helm_blob_result
+
+# ─────────────────────────────────────────────
+# 5. Repositories
+# ─────────────────────────────────────────────
+
+- name: Get existing repositories
+  uri:
+    url: "http://localhost:8081/service/rest/v1/repositories"
+    method: GET
+    user: admin
+    password: "{{ nexus_admin_password }}"
+    force_basic_auth: yes
+    return_content: yes
+  register: existing_repos
+  changed_when: false
+
+- name: Set existing repository names fact
+  set_fact:
+    existing_repo_names: "{{ existing_repos.json | map(attribute='name') | list }}"
+
+- name: Create Docker hosted repository
   uri:
     url: "http://localhost:8081/service/rest/v1/repositories/docker/hosted"
     method: POST
     user: admin
-    password: admin123
+    password: "{{ nexus_admin_password }}"
     force_basic_auth: yes
     body_format: json
     body:
-      name: docker-local
+      name: "docker-hosted"
       online: true
       storage:
-        blobStoreName: docker-blob
+        blobStoreName: "docker-blob"
+        strictContentTypeValidation: true
+        writePolicy: "allow"
+      docker:
+        v1Enabled: false
+        forceBasicAuth: true
+        httpPort: 8082
+    status_code: 201
+  when: '"docker-hosted" not in existing_repo_names'
+  register: docker_hosted_result
+
+- name: Create Docker proxy repository
+  uri:
+    url: "http://localhost:8081/service/rest/v1/repositories/docker/proxy"
+    method: POST
+    user: admin
+    password: "{{ nexus_admin_password }}"
+    force_basic_auth: yes
+    body_format: json
+    body:
+      name: "docker-proxy"
+      online: true
+      storage:
+        blobStoreName: "docker-blob"
         strictContentTypeValidation: true
       docker:
         v1Enabled: false
-  # ignore_errors: yes
+        forceBasicAuth: true
+        httpPort: 8083
+      proxy:
+        remoteUrl: "https://registry-1.docker.io"
+        contentMaxAge: 1440
+        metadataMaxAge: 1440
+    status_code: 201
+  when: '"docker-proxy" not in existing_repo_names'
+  register: docker_proxy_result
 
-- name: Create Helm repository in Nexus
+- name: Create Helm hosted repository
   uri:
     url: "http://localhost:8081/service/rest/v1/repositories/helm/hosted"
     method: POST
     user: admin
-    password: admin123
+    password: "{{ nexus_admin_password }}"
     force_basic_auth: yes
     body_format: json
     body:
-      name: helm-local
+      name: "helm-hosted"
       online: true
       storage:
-        blobStoreName: helm-blob
-  # ignore_errors: yes
+        blobStoreName: "helm-blob"
+        strictContentTypeValidation: true
+        writePolicy: "allow"
+    status_code: 201
+  when: '"helm-hosted" not in existing_repo_names'
+  register: helm_hosted_result
+
+# ─────────────────────────────────────────────
+# 6. Nginx Reverse Proxy
+# ─────────────────────────────────────────────
 
 - name: Install Nginx
   apt:
     name:
       - nginx
+      - certbot
+      - python3-certbot-nginx
     state: present
     update_cache: yes
 
@@ -135,13 +312,9 @@
     state: absent
   notify: restart nginx
 
-- name: Install certbot for Let's Encrypt
-  apt:
-    name:
-      - certbot
-      - python3-certbot-nginx
-    state: present
-    update_cache: yes
+# ─────────────────────────────────────────────
+# 7. TLS Certificate
+# ─────────────────────────────────────────────
 
 - name: Obtain and install TLS certificate for Nexus (non-interactive)
   shell: >-
@@ -151,3 +324,33 @@
   changed_when: certbot_result.rc == 0
   ignore_errors: true
   when: nexus_domain is defined
+
+# ─────────────────────────────────────────────
+# 8. Summary
+# ─────────────────────────────────────────────
+
+- name: Display Nexus setup summary
+  debug:
+    msg: |
+      ✅ Nexus Repository Manager is ready!
+
+      📍 Access URLs:
+         UI:           http://{{ nexus_domain | default('nexus.local') }}:8081
+         Docker Hub:   http://{{ nexus_domain | default('nexus.local') }}:8082
+         Proxy:        http://{{ nexus_domain | default('nexus.local') }}:8083
+
+      🔐 Credentials:
+         Username:     admin
+         Password:     {{ nexus_admin_password }}
+
+      📦 Repositories created:
+         - docker-blob (blob store)
+         - helm-blob (blob store)
+         - docker-hosted (registry for pushing images)
+         - docker-proxy (caches images from Docker Hub)
+         - helm-hosted (for Helm charts)
+
+      ⚠️  First Login Instructions:
+         1. Login with admin / {{ nexus_admin_password }}
+         2. You'll be prompted to change the password (required)
+         3. Configure realm settings if needed

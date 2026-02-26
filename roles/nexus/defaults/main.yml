@@ -1,6 +1,5 @@
 ---
-# Nexus default variables
+# role defaults retained for legacy/backwards compatibility;
+# service settings live in vars/main.yml.
 
-nexus_domain: "nexus.tochratana.com"
-nexus_port: "8081"
-certbot_email: "admin@tochratana.com"
+# empty for now, see roles/nexus/vars/main.yml

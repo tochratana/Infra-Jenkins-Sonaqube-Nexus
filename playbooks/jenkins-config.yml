@@ -1,9 +1,0 @@
----
-- name: setup domain name
-  hosts: localhost
-  gather_facts: false
-  become: true
-  vars_files:
-    - ../vars/machines.yaml
-  roles:
-    - role: jenkins

@@ -1,0 +1,6 @@
+---
+# Jenkins-specific configuration moved from group_vars
+jenkins_domain: "jenkins.tochratana.com"
+jenkins_port: 8080
+jenkins_image: "jenkins/jenkins:lts"
+certbot_email: "admin@tochratana.com"
