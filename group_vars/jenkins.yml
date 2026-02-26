@@ -1,0 +1,4 @@
+# variables for jenkins hosts
+jenkins_domain: "jenkins.tochratana.com"
+jenkins_port: "8080"
+jenkins_image: "jenkins/jenkins:lts"

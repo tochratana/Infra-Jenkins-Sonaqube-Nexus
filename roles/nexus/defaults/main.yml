@@ -1,0 +1,6 @@
+---
+# Nexus default variables
+
+nexus_domain: "nexus.tochratana.com"
+nexus_port: "8081"
+certbot_email: "admin@tochratana.com"

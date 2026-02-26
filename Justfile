@@ -7,10 +7,17 @@ create-infra:
     echo "Installing services on all machines (Docker, Jenkins, SonarQube, Nexus, Portainer) ..."
     ansible-playbook playbooks/install-services.yml -i inventory/gcp_dynamic.ini
 
+
+install-service: 
+  ansible-playbook playbooks/install-services.yml -i inventory/gcp_dynamic.ini
+
+
 create-jenkins-vm: 
   echo "Testing for creating VM"
   
-  
+jenkins-config: 
+  echo " start config nginx for jenkins .....  "
+  ansible-playbook playbooks/jenkins-config.yml
 
 
 

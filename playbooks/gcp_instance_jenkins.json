@@ -1,7 +1,7 @@
 {
     "changed": true,
     "cpuPlatform": "Intel Broadwell",
-    "creationTimestamp": "2026-02-23T07:09:12.131-08:00",
+    "creationTimestamp": "2026-02-25T23:28:28.489-08:00",
     "deletionProtection": false,
     "disks": [
         {
@@ -59,11 +59,11 @@
         }
     ],
     "failed": false,
-    "fingerprint": "I7wuyAnk9Sw=",
-    "id": "1709064925779972984",
+    "fingerprint": "J6xdRQ4sWK4=",
+    "id": "4972654701057296627",
     "kind": "compute#instance",
     "labelFingerprint": "42WmSpB8rSM=",
-    "lastStartTimestamp": "2026-02-23T07:09:24.295-08:00",
+    "lastStartTimestamp": "2026-02-25T23:28:38.403-08:00",
     "machineType": "https://www.googleapis.com/compute/v1/projects/devmentor-445804/zones/europe-central2-b/machineTypes/e2-medium",
     "metadata": {},
     "name": "jenkins",
@@ -73,16 +73,16 @@
                 {
                     "kind": "compute#accessConfig",
                     "name": "External NAT",
-                    "natIP": "34.118.21.19",
+                    "natIP": "34.116.249.215",
                     "networkTier": "PREMIUM",
                     "type": "ONE_TO_ONE_NAT"
                 }
             ],
-            "fingerprint": "DaFkdu4_bCA=",
+            "fingerprint": "cAkd79RLuPo=",
             "kind": "compute#networkInterface",
             "name": "nic0",
             "network": "https://www.googleapis.com/compute/v1/projects/devmentor-445804/global/networks/default",
-            "networkIP": "10.186.0.17",
+            "networkIP": "10.186.0.32",
             "stackType": "IPV4_ONLY",
             "subnetwork": "https://www.googleapis.com/compute/v1/projects/devmentor-445804/regions/europe-central2/subnetworks/default"
         }

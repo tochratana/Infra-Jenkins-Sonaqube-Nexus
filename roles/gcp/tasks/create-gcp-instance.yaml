@@ -28,6 +28,8 @@
       ssh-keys: "{{ agent_user }}:{{ ssh_pub_key['content'] | b64decode }}"
       startup-script: |
         #!/bin/bash
+        # Clean up any conflicting Docker sources
+        rm -f /etc/apt/sources.list.d/docker.list /etc/apt/sources.list.d/docker.sources
         sudo apt update 
         sudo apt install fish -y
     disks:

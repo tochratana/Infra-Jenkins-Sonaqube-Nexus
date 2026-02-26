@@ -10,7 +10,7 @@
 - name: Create SonarQube DNS record
   community.general.cloudflare_dns:
     zone: "{{ cloudflare_zone }}"
-    record: "sonar"
+    record: "sonarqube"
     type: A
     value: "{{ hostvars['sonarqube'].ansible_host }}"
     proxied: true

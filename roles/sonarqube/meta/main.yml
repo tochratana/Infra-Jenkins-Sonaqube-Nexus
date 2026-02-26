@@ -1,0 +1,4 @@
+---
+# SonarQube role requires Docker to run containers
+dependencies:
+  - role: docker

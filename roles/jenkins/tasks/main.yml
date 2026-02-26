@@ -1,4 +1,10 @@
 ---
+- name: Ensure Docker is installed and responding
+  command: docker version
+  register: docker_check
+  changed_when: false
+  failed_when: docker_check.rc != 0
+
 - name: Install Java (required for Jenkins)
   apt:
     name:
@@ -17,7 +23,7 @@
 - name: Install Jenkins using Docker
   docker_container:
     name: jenkins
-    image: jenkins/jenkins:lts
+    image: "{{ jenkins_image | default('jenkins/jenkins:lts') }}"
     state: started
     restart_policy: always
     ports:
@@ -49,7 +55,6 @@
       - certbot
       - python3-certbot-nginx
     state: present
-    update_cache: yes
 
 - name: Start Nginx service
   systemd:
@@ -78,15 +83,24 @@
     state: absent
   notify: restart nginx
 
-- name: Install Portainer
-  docker_container:
-    name: portainer
-    image: portainer/portainer-ce:latest
-    state: started
-    restart_policy: always
-    ports:
-      - "8000:8000"
-      - "9000:9000"
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-      - portainer_data:/data
+- name: Obtain and install TLS certificate for Jenkins (non-interactive)
+  shell: >-
+    certbot --nginx -d {{ jenkins_domain }} --non-interactive --agree-tos
+    --redirect --email {{ certbot_email | default('admin@tochratana.com') }}
+  register: certbot_result
+  changed_when: certbot_result.rc == 0
+  ignore_errors: true
+  when: jenkins_domain is defined
+
+# - name: Install Portainer
+#   docker_container:
+#     name: portainer
+#     image: portainer/portainer-ce:latest
+#     state: started
+#     restart_policy: always
+#     ports:
+#       - "8000:8000"
+#       - "9000:9000"
+#     volumes:
+#       - /var/run/docker.sock:/var/run/docker.sock
+#       - portainer_data:/data

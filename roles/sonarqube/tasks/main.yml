@@ -1,75 +1,161 @@
----
-- name: Install SonarQube using Docker
-  docker_container:
-    name: sonarqube
-    image: sonarqube:latest
-    state: started
-    restart_policy: always
-    ports:
-      - "9000:9000"
-    env:
-      SONAR_JDBC_URL: "jdbc:postgresql://sonarqube_db:5432/sonarqube"
-      SONAR_JDBC_USERNAME: "sonar"
-      SONAR_JDBC_PASSWORD: "sonar"
-    volumes:
-      - sonarqube_data:/opt/sonarqube/data
-      - sonarqube_logs:/opt/sonarqube/logs
-      - sonarqube_extensions:/opt/sonarqube/extensions
+# ---
+# - name: Update apt cache
+#   apt:
+#     update_cache: yes
+#     cache_valid_time: 3600
 
-- name: Install PostgreSQL for SonarQube (if needed separately)
-  docker_container:
-    name: sonarqube_db
-    image: postgres:13-alpine
-    state: started
-    restart_policy: always
-    env:
-      POSTGRES_USER: "sonar"
-      POSTGRES_PASSWORD: "sonar"
-      POSTGRES_DB: "sonarqube"
-    volumes:
-      - sonarqube_db:/var/lib/postgresql/data
+# - name: Install required packages for SonarQube
+#   apt:
+#     name:
+#       - openjdk-11-jre-headless
+#       - unzip
+#       - wget
+#     state: present
+#     update_cache: yes
+#   when: (sonar_install_method | default('service')) == 'service'
 
-- name: Wait for SonarQube to be ready
-  wait_for:
-    host: localhost
-    port: 9000
-    delay: 10
-    timeout: 300
+# - name: Create sonar user and group
+#   user:
+#     name: sonarqube
+#     system: yes
+#     create_home: no
 
-- name: Install Portainer
-  docker_container:
-    name: portainer
-    image: portainer/portainer-ce:latest
-    state: started
-    restart_policy: always
-    ports:
-      - "8000:8000"
-      - "9000:9000"
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-      - portainer_data:/data
+# # - name: Download SonarQube archive
+# #   get_url:
+# #     url: "{{ sonar_download_url | default('https://binaries.sonarsource.com/Distribution/sonarqube/sonarqube-9.9.1.69595.zip') }}"
+# #     dest: "/tmp/sonarqube-{{ sonar_version | default('9.9.1.69595') }}.zip"
+# #     mode: '0644'
+# #   when: (sonar_install_method | default('service')) == 'service'
 
-- name: Update apt cache
-  apt:
-    update_cache: yes
-    cache_valid_time: 3600
+# - name: Unpack SonarQube
+#   unarchive:
+#     src: "/tmp/sonarqube-{{ sonar_version }}.zip"
+#     dest: /opt
+#     remote_src: yes
+#   when: (sonar_install_method | default('service')) == 'service'
 
-- name: Install okMyZsh (zsh with oh-my-zsh)
-  apt:
-    name: zsh
-    state: present
+# - name: Ensure sonarqube symlink exists
+#   file:
+#     src: "/opt/sonarqube-{{ sonar_version }}"
+#     dest: /opt/sonarqube
+#     state: link
+#   when: (sonar_install_method | default('service')) == 'service'
 
-- name: Install oh-my-zsh
-  shell: |
-    sh -c "$(curl -fsSL https://raw.github.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
-  args:
-    creates: ~/.oh-my-zsh
-  become_user: "{{ ansible_user }}"
+# - name: Set ownership of SonarQube files
+#   file:
+#     path: /opt/sonarqube
+#     owner: sonarqube
+#     group: sonarqube
+#     recurse: yes
+#   when: (sonar_install_method | default('service')) == 'service'
+
+# - name: Deploy sonar.properties
+#   template:
+#     src: sonar.properties.j2
+#     dest: /opt/sonarqube/conf/sonar.properties
+#     owner: sonarqube
+#     group: sonarqube
+#     mode: '0644'
+#   vars:
+#     sonar_domain: "{{ sonar_domain | default('sonarqube.tochratana.com') }}"
+#   when: (sonar_install_method | default('service')) == 'service'
+
+# - name: Deploy systemd unit for SonarQube
+#   template:
+#     src: sonarqube.service.j2
+#     dest: /etc/systemd/system/sonarqube.service
+#     mode: '0644'
+#   when: (sonar_install_method | default('service')) == 'service'
+
+# - name: Reload systemd and start SonarQube
+#   systemd:
+#     daemon_reload: yes
+#     name: sonarqube
+#     state: started
+#     enabled: yes
+#   when: (sonar_install_method | default('service')) == 'service'
+
+# - name: Wait for SonarQube to be ready
+#   wait_for:
+#     host: localhost
+#     port: 9000
+#     delay: 10
+#     timeout: 300
+#   when: (sonar_install_method | default('service')) == 'service'
+
+# # - name: Install PostgreSQL for SonarQube (if needed separately)
+# #   docker_container:
+# #     name: sonarqube_db
+# #     image: postgres:13-alpine
+# #     state: started
+# #     restart_policy: always
+# #     env:
+# #       POSTGRES_USER: "sonar"
+# #       POSTGRES_PASSWORD: "sonar"
+# #       POSTGRES_DB: "sonarqube"
+# #     volumes:
+# #       - sonarqube_db:/var/lib/postgresql/data
+# - name: Install Portainer
+#   docker_container:
+#     name: portainer
+#     image: portainer/portainer-ce:latest
+#     state: started
+#     restart_policy: always
+#     ports:
+#       - "8000:8000"
+#       - "9443:9443"
+#     volumes:
+#       - /var/run/docker.sock:/var/run/docker.sock
+#       - portainer_data:/data
+
+# # If using Docker Compose deployment for SonarQube
+# - name: Ensure Docker is available for compose deployment
+#   command: docker version
+#   register: docker_check
+#   changed_when: false
+#   failed_when: docker_check.rc != 0
+#   when: (sonar_install_method | default('service')) == 'compose'
+
+# - name: Create SonarQube directory for docker-compose
+#   file:
+#     path: /opt/sonarqube
+#     state: directory
+#     owner: root
+#     group: root
+#     mode: '0755'
+#   when: (sonar_install_method | default('service')) == 'compose'
+
+# - name: Deploy docker-compose file for SonarQube
+#   template:
+#     src: docker-compose.yml.j2
+#     dest: /opt/sonarqube/docker-compose.yml
+#     mode: '0644'
+#   when: (sonar_install_method | default('service')) == 'compose'
+
+# - name: Start SonarQube with docker compose
+#   shell: docker compose -f /opt/sonarqube/docker-compose.yml up -d
+#   args:
+#     chdir: /opt/sonarqube
+#   when: (sonar_install_method | default('service')) == 'compose'
+
+# - name: Install okMyZsh (zsh with oh-my-zsh)
+#   apt:
+#     name: zsh
+#     state: present
+
+# - name: Install oh-my-zsh
+#   shell: |
+#     sh -c "$(curl -fsSL https://raw.github.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
+#   args:
+#     creates: ~/.oh-my-zsh
+#   become_user: "{{ ansible_user }}"
 
 - name: Install Nginx
   apt:
     name:
       - nginx
+      - certbot
+      - python3-certbot-nginx
     state: present
     update_cache: yes
 
@@ -79,23 +165,137 @@
     state: started
     enabled: yes
 
-- name: Deploy Nginx reverse proxy config for SonarQube
+# - name: Deploy Nginx reverse proxy config for SonarQube
+#   template:
+#     src: nginx-sonarqube.j2
+#     dest: /etc/nginx/sites-available/sonarqube
+#   vars:
+#     sonar_domain: "{{ sonar_domain | default('sonarqube.tochratana.com') }}"
+#   notify: restart nginx
+
+# - name: Enable SonarQube Nginx site
+#   file:
+#     src: /etc/nginx/sites-available/sonarqube
+#     dest: /etc/nginx/sites-enabled/sonarqube
+#     state: link
+#   notify: restart nginx
+
+# - name: Remove default Nginx site
+#   file:
+#     path: /etc/nginx/sites-enabled/default
+#     state: absent
+#   notify: restart nginx
+
+# - name: Install certbot for Let's Encrypt (Certbot will obtain cert if domain resolves)
+#   apt:
+#     name:
+#       - certbot
+#       - python3-certbot-nginx
+#     state: present
+#     update_cache: yes
+
+# - name: Obtain and install TLS certificate for SonarQube (non-interactive)
+#   shell: >-
+#     certbot --nginx -d {{ sonar_domain }} --non-interactive --agree-tos
+#     --redirect --email {{ certbot_email | default('admin@tochratana.com') }}
+#   register: certbot_result
+#   changed_when: certbot_result.rc == 0
+#   ignore_errors: true
+#   when: sonar_domain is defined
+
+
+- name: Set vm.max_map_count
+  sysctl:
+    name: vm.max_map_count
+    value: 262144
+    state: present
+    reload: yes
+
+#################################################
+# Create SonarQube directory
+#################################################
+
+- name: Create SonarQube directory
+  file:
+    path: /opt/sonarqube
+    state: directory
+    mode: '0755'
+
+- name: Deploy docker-compose file
+  copy:
+    src: docker-compose.yml
+    dest: /opt/sonarqube/docker-compose.yml
+
+- name: Start SonarQube
+  command: docker compose up -d
+  args:
+    chdir: /opt/sonarqube
+
+#################################################
+# Install Portainer (Different Port)
+#################################################
+
+- name: Run Portainer
+  community.docker.docker_container:
+    name: portainer
+    image: portainer/portainer-ce:latest
+    restart_policy: always
+    ports:
+      - "9443:9443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - portainer_data:/data
+
+#################################################
+# Nginx Reverse Proxy
+#################################################
+
+- name: Ensure nginx sites-available directory exists
+  file:
+    path: /etc/nginx/sites-available
+    state: directory
+    mode: '0755'
+
+- name: Deploy Nginx config
   template:
     src: nginx-sonarqube.j2
     dest: /etc/nginx/sites-available/sonarqube
-  vars:
-    sonar_domain: "sonar.tochratana.com"
   notify: restart nginx
 
-- name: Enable SonarQube Nginx site
+- name: Enable SonarQube site
   file:
     src: /etc/nginx/sites-available/sonarqube
     dest: /etc/nginx/sites-enabled/sonarqube
     state: link
   notify: restart nginx
 
-- name: Remove default Nginx site
+- name: Remove default nginx site
   file:
     path: /etc/nginx/sites-enabled/default
     state: absent
   notify: restart nginx
+
+- name: Ensure Nginx running
+  systemd:
+    name: nginx
+    state: started
+    enabled: yes
+
+# make sure sites-available directory exists (nginx package normally creates it)
+- name: Ensure nginx sites-available directory exists
+  file:
+    path: /etc/nginx/sites-available
+    state: directory
+    mode: '0755'
+
+#################################################
+# HTTPS with Certbot
+#################################################
+
+- name: Obtain SSL certificate
+  shell: >
+    certbot --nginx -d {{ sonar_domain }}
+    --non-interactive --agree-tos
+    --email {{ certbot_email }}
+    --redirect
+  when: sonar_domain is defined

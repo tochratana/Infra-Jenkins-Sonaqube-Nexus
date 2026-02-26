@@ -16,6 +16,12 @@
     creates: ~/.oh-my-zsh
   become_user: "{{ ansible_user }}"
 
+- name: Ensure Docker is installed and responding
+  command: docker version
+  register: docker_check
+  changed_when: false
+  failed_when: docker_check.rc != 0
+
 - name: Install Portainer
   docker_container:
     name: portainer
@@ -114,8 +120,6 @@
   template:
     src: nginx-nexus.j2
     dest: /etc/nginx/sites-available/nexus
-  vars:
-    nexus_domain: "nexus.tochratana.com"
   notify: restart nginx
 
 - name: Enable Nexus Nginx site
@@ -130,3 +134,20 @@
     path: /etc/nginx/sites-enabled/default
     state: absent
   notify: restart nginx
+
+- name: Install certbot for Let's Encrypt
+  apt:
+    name:
+      - certbot
+      - python3-certbot-nginx
+    state: present
+    update_cache: yes
+
+- name: Obtain and install TLS certificate for Nexus (non-interactive)
+  shell: >-
+    certbot --nginx -d {{ nexus_domain }} --non-interactive --agree-tos
+    --redirect --email {{ certbot_email | default('admin@tochratana.com') }}
+  register: certbot_result
+  changed_when: certbot_result.rc == 0
+  ignore_errors: true
+  when: nexus_domain is defined

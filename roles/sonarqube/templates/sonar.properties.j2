@@ -1,0 +1,15 @@
+########################################
+# SonarQube configuration (generated)
+########################################
+
+# Path to the database (if using external DB)
+# sonar.jdbc.url=jdbc:postgresql://localhost/sonarqube
+
+# Web server settings
+sonar.web.host=127.0.0.1
+sonar.web.port=9000
+# Base URL used by SonarQube for links in notifications
+sonar.core.serverBaseURL=https://{{ sonar_domain }}
+
+# Reduce logging noise
+sonar.log.level=INFO

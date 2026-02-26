@@ -81,6 +81,6 @@
         api_token: "{{ cloudflare_api_token }}"
       when: not destroy_infrastructure | default(false)
 
-# - name: Install services on created instances
-#   import_playbook: ../playbooks/install-services.yml
-#   when: not destroy_infrastructure | default(false)
+- name: Install services on created instances
+  import_playbook: ../playbooks/install-services.yml
+  when: not destroy_infrastructure | default(false)

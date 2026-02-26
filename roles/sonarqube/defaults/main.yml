@@ -1,0 +1,6 @@
+---
+# SonarQube default variables
+
+sonar_domain: "sonarqube.tochratana.com"
+certbot_email: "admin@tochratana.com"
+sonar_install_method: "compose"
